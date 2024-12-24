@@ -1,2 +1,1 @@
-# gowiki
-Writing Web Applications
+This repository holds the code from this tutorial: <https://go.dev/doc/articles/wiki/>
