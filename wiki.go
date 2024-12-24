@@ -5,8 +5,9 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"os"
 	"regexp"
+
+	"github.com/peterramaldes/gowiki/internal/page"
 )
 
 func main() {
@@ -14,25 +15,6 @@ func main() {
 	http.HandleFunc("/edit/", makeHandler(editHandler))
 	http.HandleFunc("/save/", makeHandler(saveHandler))
 	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-
-type Page struct {
-	Title string
-	Body  []byte
-}
-
-func (p *Page) save() error {
-	filename := p.Title + ".txt"
-	return os.WriteFile(filename, p.Body, 0600)
-}
-
-func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
-	body, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	return &Page{Title: title, Body: body}, nil
 }
 
 var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
@@ -50,7 +32,7 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
+	p, err := page.New(title)
 	if err != nil {
 		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
 		return
@@ -60,9 +42,9 @@ func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
 }
 
 func editHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
+	p, err := page.New(title)
 	if err != nil {
-		p = &Page{Title: title}
+		p = &page.Page{Title: title}
 	}
 
 	renderTemplate(w, "edit", p)
@@ -70,8 +52,8 @@ func editHandler(w http.ResponseWriter, r *http.Request, title string) {
 
 func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	body := r.FormValue("body")
-	p := &Page{Title: title, Body: []byte(body)}
-	err := p.save()
+	p := &page.Page{Title: title, Body: []byte(body)}
+	err := p.Save()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -82,7 +64,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 
 var templates = template.Must(template.ParseFiles("_content/edit.tmpl", "_content/view.tmpl"))
 
-func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
+func renderTemplate(w http.ResponseWriter, tmpl string, p *page.Page) {
 	filename := fmt.Sprintf("%s.tmpl", tmpl)
 	err := templates.ExecuteTemplate(w, filename, p)
 	if err != nil {
