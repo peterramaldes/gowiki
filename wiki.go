@@ -67,15 +67,11 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
-func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	filename := fmt.Sprintf("_content/%s.tmpl", tmpl)
-	t, err := template.ParseFiles(filename)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+var templates = template.Must(template.ParseFiles("_content/edit.tmpl", "_content/view.tmpl"))
 
-	err = t.Execute(w, p)
+func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
+	filename := fmt.Sprintf("%s.tmpl", tmpl)
+	err := templates.ExecuteTemplate(w, filename, p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
